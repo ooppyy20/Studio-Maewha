@@ -309,7 +309,7 @@ function openAuth(){
 }
 function checkAuth(){
   adminInput=document.getElementById('auth-in').value.trim();
-  if(adminInput===ADMIN_CODE){
+  if(adminInput===ADMIN_PASSWORD){
     closeOv('auth-ov');updateCatList();renderDelList();showOv('adm-ov');
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===0));
     document.getElementById('tab-add').style.display='block';
