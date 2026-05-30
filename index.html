@@ -1,0 +1,356 @@
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--cream:#FDFCF8;--warm:#c4bcb5;--ink:#000;--ink-light:#6C5F65;--accent:#9b2682;--accent-light:#d6bcd1;}
+html,body{background:var(--cream);color:var(--ink);font-family:'Pretendard',serif;overflow-x:hidden}
+body{padding:0 clamp(0.75rem,3vw,1.5rem)}
+
+header{background:var(--cream);padding:5rem 0;text-align:center}
+.brand-name{font-family:'koPubWorldBatang',serif;font-size:clamp(60px,10vw,60px);letter-spacing:-0.06em;line-height:0.95}
+.brand-sub{font-size:clamp(9px,2vw,10px);font-weight:500;letter-spacing:0.22em;color:var(--accent);margin-top:3px}
+.contact-strip{display:flex;flex-wrap:wrap;justify-content:center;margin-top:.75rem;padding-top:0.6rem}
+.citem{padding:3px clamp(8px,3vw,18px);text-align:center;font-size:clamp(10px,2.5vw,12px)}
+.citem span{display:block;font-size:clamp(8px,1.8vw,10px);letter-spacing:0.15em;color:var(--ink-light);margin-bottom:1px}
+
+nav{background:var(--cream);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.nav-btn{background:none;border:none;margin:11px clamp(12px,3.5vw,20px);font-family:'Pretendard',serif;font-size:clamp(10px,2.5vw,12px);letter-spacing:0.12em;color:var(--ink-light);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;transition:color 0.2s}
+.nav-btn.active{color:var(--ink);font-weight:500;background-color:var(--accent-light);border: 5px solid var(--accent-light);}
+
+.admin-btn{background:none;border:none;cursor:pointer;padding:6px;position:absolute;right:0.5rem;top:0.5rem;align-items:center;justify-content:center;opacity:0.55;transition:opacity 0.2s}
+.admin-btn:hover{opacity:1}
+.admin-btn svg{width:22px;height:22px;fill:var(--ink)}
+
+#grid-wrap{padding:0.75rem clamp(0.75rem,3vw,1.5rem) 3rem;position:relative}
+#grid{display:grid;gap:clamp(6px,2vw,10px);grid-template-columns:1fr}
+@media(min-width:420px){#grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:600px){#grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:860px){#grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1100px){#grid{grid-template-columns:repeat(5,1fr)}}
+
+.card-wrap{display:flex;flex-direction:column;cursor:pointer}
+.card-img{overflow:hidden;background:var(--warm);aspect-ratio:3/4;position:relative;border-radius:2px;}
+@media(max-width:419px){.card-img{aspect-ratio:4/3}}
+.card-img img{width:100%;height:100%;object-fit:cover;display:block;filter:brightness(1.04)saturate(0.88)sepia(0.09);transition:transform 0.5s cubic-bezier(.25,.46,.45,.94)}
+@media(hover:hover){.card-wrap:hover .card-img img{transform:scale(1.05)}}
+.card-name{padding:clamp(6px,2vw,10px) 2px clamp(12px,3vw,18px);font-size:clamp(11px,2.5vw,12px);letter-spacing:0.06em;color:var(--ink-light);transition:color 0.2s;line-height:1.4}
+@media(hover:hover){.card-wrap:hover .card-name{color:var(--ink);}}
+.card-wrap{opacity:0;transform:translateY(16px);transition:opacity 0.48s ease,transform 0.48s ease}
+.card-wrap.revealed{opacity:1;transform:translateY(0)}
+
+#fx-canvas{position:absolute;top:0;left:0;pointer-events:none;z-index:2;opacity:0.5}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(28,26,22,0.55);z-index:1000;align-items:flex-end;justify-content:center}
+@media(min-width:600px){.overlay{align-items:center}}
+.overlay.show{display:flex}
+.modal{background:var(--cream);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:clamp(1.2rem,5vw,2rem);border-radius:10px;}
+.modal-title{font-family:'koPubWorldBatang',serif;font-size:clamp(22px,5vw,26px);font-weight:300;margin-bottom:1.1rem}
+.field{margin-bottom:0.9rem}
+.field label{display:block;font-size:clamp(9px,2vw,10px);letter-spacing:0.15em;color:var(--ink-light);margin-bottom:5px}
+.field input{width:100%;padding:clamp(9px,2.5vw,11px) 12px;background:var(--warm);border:none;font-family:'Pretendard',serif;font-size:clamp(12px,3vw,13px);color:var(--ink);outline:none;-webkit-appearance:none;border-radius:0}
+.btn-row{display:flex;gap:8px;margin-top:1rem}
+.btn-p{flex:1;padding:clamp(10px,2.5vw,12px);background:var(--ink);color:var(--cream);border:none;font-family:'Pretendard',serif;font-size:clamp(11px,2.5vw,12px);letter-spacing:0.12em;cursor:pointer;border-radius:0}
+.btn-s{padding:clamp(10px,2.5vw,12px) 16px;background:transparent;border:0.5px solid var(--accent-light);font-family:'Pretendard',serif;font-size:clamp(11px,2.5vw,12px);color:var(--ink-light);cursor:pointer;border-radius:0}
+.tab-row{display:flex;margin-bottom:1.2rem}
+.tab{padding:9px 18px;font-size:clamp(10px,2.5vw,11px);letter-spacing:0.12em;background:none;border:none;color:var(--ink-light);cursor:pointer;margin-bottom:-0.5px}
+.tab.on{color:var(--ink);background:var(--accent-light);}
+.di{display:flex;align-items:center;padding:11px 0;gap:10px}
+.di img{width:40px;height:40px;object-fit:cover;flex-shrink:0}
+.di-info{flex:1;min-width:0}
+.di-cat{font-size:9px;color:var(--accent);letter-spacing:0.1em;margin-bottom:2px}
+.di-name{font-size:12px;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-x{background:none;border:none;color:var(--ink-light);cursor:pointer;font-size:16px;padding:6px 8px;flex-shrink:0}
+.msg{font-size:12px;margin-top:7px;letter-spacing:0.04em}
+.err{color:#c0392b}.suc{color:var(--accent)}
+.upload-box{border:0.5px dashed var(--accent-light);padding:18px;text-align:center;cursor:pointer;color:var(--ink-light);font-size:clamp(11px,2.5vw,12px);letter-spacing:0.06em}
+</style>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>매화 스튜디오, 구슬로 엮어낸 럭셔리</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/koPubWorldBatang/koPubWorldBatang.css">
+</head>
+
+<header>
+  <button class="admin-btn" onclick="openAuth()" aria-label="관리자">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+      <path d="M 12.474609 3 C 11.969609 3 11.544422 3.3769531 11.482422 3.8769531 L 11.279297 5.5 C 10.578297 5.703 9.9066719 5.9848437 9.2636719 6.3398438 L 7.96875 5.3300781 C 7.57075 5.0210781 7.0034844 5.0550625 6.6464844 5.4140625 L 4.4140625 7.6464844 C 4.0580625 8.0024844 4.0220313 8.57075 4.3320312 8.96875 L 5.3398438 10.263672 C 4.9848437 10.905672 4.7049531 11.580297 4.5019531 12.279297 L 2.8769531 12.482422 C 2.3769531 12.544422 2 12.970609 2 13.474609 L 2 16.632812 C 2 17.136813 2.3759531 17.562 2.8769531 17.625 L 4.5019531 17.828125 C 4.7049531 18.528125 4.9858437 19.20175 5.3398438 19.84375 L 4.3320312 21.138672 C 4.0220313 21.536672 4.0580625 22.104937 4.4140625 22.460938 L 6.6464844 24.693359 C 6.8414844 24.888359 7.0975156 24.986328 7.3535156 24.986328 C 7.6085156 24.986328 7.8645937 24.888359 8.0585938 24.693359 C 8.4495938 24.302359 8.4495938 23.670297 8.0585938 23.279297 L 6.4511719 21.669922 L 7.3378906 20.53125 C 7.5998906 20.19425 7.6177187 19.728094 7.3867188 19.371094 C 6.8537187 18.551094 6.48125 17.656891 6.28125 16.712891 C 6.19325 16.295891 5.8507344 15.982688 5.4277344 15.929688 L 4 15.75 L 4 14.357422 L 5.4296875 14.177734 C 5.8516875 14.124734 6.1942031 13.811531 6.2832031 13.394531 C 6.4832031 12.450531 6.8556719 11.554375 7.3886719 10.734375 C 7.6196719 10.377375 7.5998906 9.9131719 7.3378906 9.5761719 L 6.4511719 8.4375 L 7.4375 7.4511719 L 8.5742188 8.3378906 C 8.9112188 8.6018906 9.378375 8.6177187 9.734375 8.3867188 C 10.555375 7.8527188 11.450531 7.48125 12.394531 7.28125 C 12.811531 7.19325 13.124734 6.8507344 13.177734 6.4277344 L 13.355469 5 L 14.748047 5 L 14.927734 6.4277344 C 14.980734 6.8497344 15.296891 7.19225 15.712891 7.28125 C 16.656891 7.48125 17.550141 7.8537187 18.369141 8.3867188 C 18.727141 8.6187187 19.192297 8.6008906 19.529297 8.3378906 L 20.669922 7.4511719 L 22.277344 9.0605469 C 22.668344 9.4515469 23.300406 9.4515469 23.691406 9.0605469 C 24.082406 8.6695469 24.082406 8.0374844 23.691406 7.6464844 L 21.458984 5.4121094 C 21.101984 5.0541094 20.536672 5.0200781 20.138672 5.3300781 L 18.84375 6.3398438 C 18.20175 5.9848437 17.526172 5.703 16.826172 5.5 L 16.623047 3.8769531 C 16.561047 3.3759531 16.136812 3 15.632812 3 L 12.474609 3 z M 18.099609 10 C 17.595609 10 17.169422 10.376953 17.107422 10.876953 L 16.960938 12.066406 C 16.215937 12.257406 15.495984 12.554312 14.833984 12.945312 L 13.888672 12.210938 C 13.490672 11.900937 12.921406 11.935969 12.566406 12.292969 L 11.294922 13.564453 C 10.938922 13.920453 10.902891 14.488719 11.212891 14.886719 L 11.947266 15.830078 C 11.555266 16.492078 11.259406 17.211031 11.066406 17.957031 L 9.8789062 18.105469 C 9.3769062 18.169469 9 18.595609 9 19.099609 L 9 20.900391 C 9 21.404391 9.3769531 21.830578 9.8769531 21.892578 L 11.064453 22.039062 C 11.256453 22.785062 11.553312 23.505969 11.945312 24.167969 L 11.210938 25.113281 C 10.900937 25.511281 10.936969 26.077594 11.292969 26.433594 L 12.564453 27.705078 C 12.921453 28.062078 13.488719 28.097109 13.886719 27.787109 L 14.832031 27.052734 C 15.494031 27.443734 16.211031 27.741594 16.957031 27.933594 L 17.105469 29.123047 C 17.169469 29.624047 17.595609 30 18.099609 30 L 19.900391 30 C 20.404391 30 20.830578 29.623047 20.892578 29.123047 L 21.039062 27.933594 C 21.785062 27.741594 22.504016 27.445688 23.166016 27.054688 L 24.111328 27.789062 C 24.508328 28.099062 25.076594 28.064031 25.433594 27.707031 L 26.705078 26.435547 C 27.061078 26.079547 27.097109 25.511281 26.787109 25.113281 L 26.052734 24.167969 C 26.444734 23.505969 26.740594 22.787016 26.933594 22.041016 L 28.121094 21.892578 C 28.623094 21.828578 29 21.404391 29 20.900391 L 29 19.099609 C 29 18.595609 28.623047 18.169422 28.123047 18.107422 L 26.935547 17.960938 C 26.743547 17.214938 26.446687 16.494031 26.054688 15.832031 L 26.789062 14.888672 C 27.099062 14.490672 27.063031 13.922406 26.707031 13.566406 L 25.435547 12.294922 C 25.080547 11.937922 24.510281 11.902891 24.113281 12.212891 L 23.167969 12.947266 C 22.505969 12.556266 21.787969 12.259359 21.042969 12.068359 L 20.894531 10.878906 C 20.830531 10.376906 20.404391 10 19.900391 10 L 18.099609 10 z M 19 18 C 20.105 18 21 18.895 21 20 C 21 21.105 20.105 22 19 22 C 17.895 22 17 21.105 17 20 C 17 18.895 17.895 18 19 18 z"/>
+    </svg>
+  </button>
+  <div class="brand-name">Studio Maewha.</div>
+  <div class="brand-sub">매화 스튜디오, 구슬로 엮어낸 럭셔리</div>
+  <div class="contact-strip">
+    <div class="citem"><span>전화</span>010-3674-9548</div>
+    <div class="citem"><span>카카오톡</span>@ateliersori</div>
+    <div class="citem"><span>사업자등록번호</span>123-45-67890</div>
+  </div>
+</header>
+
+<nav id="nav"></nav>
+
+<div id="grid-wrap">
+  <canvas id="fx-canvas"></canvas>
+  <div id="grid"></div>
+</div>
+
+<div class="overlay" id="auth-ov">
+  <div class="modal">
+    <p class="modal-title">관리자</p>
+    <div class="field"><label>관리자 코드</label>
+      <input type="password" id="auth-in" onkeydown="if(event.key==='Enter')checkAuth()" placeholder="비밀번호 입력">
+    </div>
+    <p class="msg err" id="auth-err" style="display:none">코드가 일치하지 않습니다.</p>
+    <div class="btn-row">
+      <button class="btn-p" onclick="checkAuth()">확인</button>
+      <button class="btn-s" onclick="closeOv('auth-ov')">취소</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="adm-ov">
+  <div class="modal">
+    <p class="modal-title">상품 관리</p>
+    <div class="tab-row">
+      <button class="tab on" onclick="switchTab('add',this)">상품 등록</button>
+      <button class="tab" onclick="switchTab('del',this)">상품 삭제</button>
+    </div>
+    <div id="tab-add">
+      <div class="field"><label>상품 사진</label>
+        <div class="upload-box" onclick="document.getElementById('img-file').click()">클릭하여 이미지 업로드</div>
+        <input type="file" id="img-file" accept="image/*" style="display:none" onchange="previewImg(this)">
+        <img id="img-prev" style="width:100%;height:140px;object-fit:cover;display:none;margin-top:8px">
+      </div>
+      <div class="field"><label>카테고리</label>
+        <input type="text" id="add-cat" list="cat-list" placeholder="예: 팔찌, 키링, 소품..."><datalist id="cat-list"></datalist>
+      </div>
+      <div class="field"><label>상품명</label><input type="text" id="add-name" placeholder="상품 이름 입력"></div>
+      <p class="msg err" id="add-err" style="display:none"></p>
+      <p class="msg suc" id="add-suc" style="display:none">등록되었습니다.</p>
+      <div class="btn-row">
+        <button class="btn-p" onclick="addProduct()">등록하기</button>
+        <button class="btn-s" onclick="closeOv('adm-ov')">닫기</button>
+      </div>
+    </div>
+    <div id="tab-del" style="display:none">
+      <div id="del-list" style="max-height:300px;overflow-y:auto"></div>
+      <div class="btn-row" style="margin-top:1rem">
+        <button class="btn-s" onclick="closeOv('adm-ov')">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const ADMIN_CODE='1234';
+let products=JSON.parse(localStorage.getItem('sori_p')||'null');
+let currentCat='all', imgData=null;
+
+if(!products){
+  products=[
+    {id:1,category:'샘플',name:'샘플 상품',image:'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
+  ];
+  save();
+}
+
+function save(){localStorage.setItem('sori_p',JSON.stringify(products))}
+
+function renderNav(){
+  const nav=document.getElementById('nav');
+  const cats=['전체',...new Set(products.map(p=>p.category))];
+  nav.innerHTML=cats.map(cat=>{
+    const on=(cat==='전체'&&currentCat==='all')||(cat===currentCat);
+    return`<button class="nav-btn${on?' active':''}" onclick="selectCat('${cat}')">${cat}</button>`;
+  }).join('');
+}
+
+function selectCat(cat){
+  currentCat=cat==='전체'?'all':cat;
+  renderNav();renderGrid();
+  document.getElementById('grid-wrap').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderGrid(){
+  const grid=document.getElementById('grid');
+  const list=currentCat==='all'?products:products.filter(p=>p.category===currentCat);
+  grid.innerHTML=list.map(p=>`
+    <div class="card-wrap">
+      <div class="card-img"><img src="${p.image}" alt="${p.name}" loading="lazy"></div>
+      <div class="card-name">${p.name}</div>
+    </div>`).join('');
+  initReveal();
+  syncCanvas();
+}
+
+let revealIO=null;
+function initReveal(){
+  if(revealIO)revealIO.disconnect();
+  revealIO=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const delay=parseInt(e.target.dataset.col||0)*55;
+        setTimeout(()=>e.target.classList.add('revealed'),delay);
+        revealIO.unobserve(e.target);
+      }
+    });
+  },{threshold:0.06,rootMargin:'0px 0px -20px 0px'});
+  const cols=getCols();
+  document.querySelectorAll('.card-wrap').forEach((c,i)=>{c.dataset.col=i%cols;revealIO.observe(c)});
+}
+
+function getCols(){
+  const w=window.innerWidth;
+  if(w>=1100)return 5;
+  if(w>=860)return 4;
+  if(w>=600)return 3;
+  if(w>=420)return 2;
+  return 1;
+}
+
+/* THREE.JS */
+let r3,s3,cam3,pts,clk;
+const fxC=document.getElementById('fx-canvas');
+
+function initThree(){
+  const wrap=document.getElementById('grid-wrap');
+  const W=wrap.offsetWidth,H=Math.max(wrap.offsetHeight,300);
+  r3=new THREE.WebGLRenderer({canvas:fxC,alpha:true,antialias:false});
+  r3.setPixelRatio(Math.min(devicePixelRatio,1.5));
+  r3.setSize(W,H);
+  r3.setClearColor(0,0);
+  s3=new THREE.Scene();
+  cam3=new THREE.OrthographicCamera(0,W,H,0,-10,10);
+  cam3.position.z=1;
+  clk=new THREE.Clock();
+  spawnParticles(W,H);
+}
+
+function spawnParticles(W,H){
+  if(pts)s3.remove(pts);
+  const n=Math.min(100,Math.floor(W*H/5000));
+  const pos=new Float32Array(n*3);
+  const vel=[];
+  for(let i=0;i<n;i++){
+    pos[i*3]=Math.random()*W;
+    pos[i*3+1]=Math.random()*H;
+    pos[i*3+2]=0;
+    vel.push({x:(Math.random()-.5)*.15,y:-Math.random()*.18-.04});
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const sz=window.innerWidth<420?1.6:2.0;
+  const mat=new THREE.PointsMaterial({color:0xD4C9B8,size:sz,sizeAttenuation:false,transparent:true,opacity:0.65});
+  pts=new THREE.Points(geo,mat);
+  pts._vel=vel;pts._n=n;pts._W=W;pts._H=H;
+  s3.add(pts);
+}
+
+function syncCanvas(){
+  if(!r3)return;
+  const wrap=document.getElementById('grid-wrap');
+  const W=wrap.offsetWidth,H=Math.max(wrap.offsetHeight,300);
+  fxC.style.width=W+'px';fxC.style.height=H+'px';
+  r3.setSize(W,H);
+  cam3.right=W;cam3.top=H;cam3.updateProjectionMatrix();
+  spawnParticles(W,H);
+}
+
+function animThree(){
+  requestAnimationFrame(animThree);
+  if(!pts)return;
+  const p=pts.geometry.attributes.position;
+  const v=pts._vel,W=pts._W,H=pts._H,n=pts._n;
+  const t=clk.getElapsedTime();
+  for(let i=0;i<n;i++){
+    let x=p.getX(i)+v[i].x+Math.sin(t*.35+i*.8)*.06;
+    let y=p.getY(i)+v[i].y;
+    if(y<0){y=H;x=Math.random()*W;}
+    if(x<0)x=W;if(x>W)x=0;
+    p.setXY(i,x,y);
+  }
+  p.needsUpdate=true;
+  r3.render(s3,cam3);
+}
+
+function ripple(cx,cy){
+  if(!pts)return;
+  const rect=fxC.getBoundingClientRect();
+  const mx=cx-rect.left,my=cy-rect.top;
+  const p=pts.geometry.attributes.position,v=pts._vel,n=pts._n;
+  for(let i=0;i<n;i++){
+    const dx=p.getX(i)-mx,dy=p.getY(i)-my;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(d<70&&d>0){const f=(70-d)/70*.45;v[i].x+=(dx/d)*f;v[i].y+=(dy/d)*f;v[i].x*=.9;v[i].y*=.9;}
+  }
+}
+document.getElementById('grid-wrap').addEventListener('mousemove',e=>ripple(e.clientX,e.clientY),{passive:true});
+document.getElementById('grid-wrap').addEventListener('touchmove',e=>{if(e.touches[0])ripple(e.touches[0].clientX,e.touches[0].clientY)},{passive:true});
+
+/* MODALS */
+function showOv(id){document.getElementById(id).classList.add('show')}
+function closeOv(id){document.getElementById(id).classList.remove('show')}
+function openAuth(){
+  document.getElementById('auth-err').style.display='none';
+  document.getElementById('auth-in').value='';
+  showOv('auth-ov');
+  setTimeout(()=>document.getElementById('auth-in').focus(),100);
+}
+function checkAuth(){
+  if(document.getElementById('auth-in').value===ADMIN_CODE){
+    closeOv('auth-ov');updateCatList();renderDelList();showOv('adm-ov');
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===0));
+    document.getElementById('tab-add').style.display='block';
+    document.getElementById('tab-del').style.display='none';
+  }else{document.getElementById('auth-err').style.display='block'}
+}
+function switchTab(tab,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('tab-add').style.display=tab==='add'?'block':'none';
+  document.getElementById('tab-del').style.display=tab==='del'?'block':'none';
+  if(tab==='del')renderDelList();
+}
+function updateCatList(){
+  document.getElementById('cat-list').innerHTML=[...new Set(products.map(p=>p.category))].map(c=>`<option value="${c}">`).join('');
+}
+function previewImg(input){
+  if(!input.files||!input.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{imgData=e.target.result;const p=document.getElementById('img-prev');p.src=imgData;p.style.display='block'};
+  r.readAsDataURL(input.files[0]);
+}
+function addProduct(){
+  const cat=document.getElementById('add-cat').value.trim();
+  const name=document.getElementById('add-name').value.trim();
+  const err=document.getElementById('add-err'),suc=document.getElementById('add-suc');
+  err.style.display='none';suc.style.display='none';
+  if(!imgData||!cat||!name){err.textContent='사진, 카테고리, 상품명을 모두 입력해 주세요.';err.style.display='block';return}
+  products.push({id:Date.now(),category:cat,name,image:imgData});
+  save();suc.style.display='block';
+  document.getElementById('add-cat').value='';
+  document.getElementById('add-name').value='';
+  document.getElementById('img-file').value='';
+  document.getElementById('img-prev').style.display='none';
+  imgData=null;
+  updateCatList();renderNav();renderGrid();
+}
+function renderDelList(){
+  const dl=document.getElementById('del-list');
+  if(!products.length){dl.innerHTML='<p style="font-size:13px;color:var(--ink-light);padding:1rem 0">등록된 상품이 없습니다.</p>';return}
+  dl.innerHTML=products.map(p=>`
+    <div class="di">
+      <img src="${p.image}" alt="${p.name}">
+      <div class="di-info"><div class="di-cat">${p.category}</div><div class="di-name">${p.name}</div></div>
+      <button class="btn-x" onclick="delProduct(${p.id})">✕</button>
+    </div>`).join('');
+}
+function delProduct(id){
+  products=products.filter(p=>p.id!==id);save();renderDelList();renderNav();renderGrid();
+}
+
+renderNav();
+renderGrid();
+window.addEventListener('load',()=>{initThree();animThree();setTimeout(syncCanvas,200)});
+let rT;
+window.addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{syncCanvas();initReveal()},200)});
+</script>
