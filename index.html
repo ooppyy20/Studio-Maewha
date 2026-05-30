@@ -143,8 +143,20 @@ nav::-webkit-scrollbar{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const API = 'https://studio-maewha.up.railway.app/';
-const products = await fetch(`${API}/api/products`).then(r => r.json());
-let currentCat='all', imgData=null, adminInput=null;
+let currentCat = 'all', imgData = null, adminInput = null;
+let products = [];
+
+async function loadProducts() {
+  try {
+    const response = await fetch(`${API}/api/products`);
+    products = await response.json();
+    console.log("상품 로드 완료:", products);
+  } catch (error) {
+    console.error("데이터를 가져오는데 실패했습니다:", error);
+  }
+}
+
+loadProducts();
 
 if(!products){
   products=[
