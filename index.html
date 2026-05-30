@@ -133,7 +133,7 @@ nav::-webkit-scrollbar{display:none}
     </div>
     <div id="tab-del" style="display:none">
       <div id="del-list" style="max-height:300px;overflow-y:auto"></div>
-      <div class="btn-row" style="margin-top:1rem">
+      <div class="btn-row" style="margin-top:1rem; justify-content: flex-end;">
         <button class="btn-s" onclick="closeOv('adm-ov')">닫기</button>
       </div>
     </div>
@@ -143,16 +143,15 @@ nav::-webkit-scrollbar{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const API = 'https://studio-maewha.up.railway.app';
-let currentCat = 'all', imgFile = null, adminInput = null; // imgData 대신 파일 객체를 저장할 변수 변경
+let currentCat = 'all', imgFile = null, adminInput = null;
 let products = [];
 
-// 1. 비동기로 서버에서 상품 목록을 가져온 후 화면을 그리는 함수
+// 1. 서버에서 상품 목록을 가져오는 함수
 async function loadProducts() {
   try {
     const response = await fetch(`${API}/api/products`);
     const data = await response.json();
     
-    // 백엔드 DB 컬럼명(image_url)을 프론트엔드 형식(image)에 맞게 매핑
     products = data.map(p => ({
       id: p.id,
       category: p.category,
@@ -162,14 +161,12 @@ async function loadProducts() {
 
     console.log("상품 로드 완료:", products);
 
-    // 샘플 데이터 방어 코드
     if (!products || products.length === 0) {
       products = [
         {id: 1, category: '샘플', name: '샘플 상품', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
       ];
     }
 
-    // 데이터를 가져온 직후 화면 UI 생성 및 애니메이션 초기화
     renderNav();
     renderGrid();
     initThree();
@@ -178,7 +175,6 @@ async function loadProducts() {
 
   } catch (error) {
     console.error("데이터를 가져오는데 실패했습니다:", error);
-    // 서버가 안 켜졌을 때를 대비한 임시 로컬 데이터
     products = [
       {id: 1, category: '샘플', name: '샘플 상품(로컬서버오류)', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
     ];
@@ -189,7 +185,7 @@ async function loadProducts() {
   }
 }
 
-// 2. 관리자 인증 요청 (ADMIN_PASSWORD 에러 해결)
+// 2. 관리자 인증 요청
 async function checkAuth() {
   adminInput = document.getElementById('auth-in').value.trim();
   
@@ -197,18 +193,13 @@ async function checkAuth() {
     const response = await fetch(`${API}/api/auth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: adminInput }) // ADMIN_PASSWORD 대신 입력한 값 전송
+      body: JSON.stringify({ code: adminInput })
     });
     const data = await response.json();
 
     if (data.ok) {
       closeOv('auth-ov');
-      updateCatList();
-      renderDelList();
-      showOv('adm-ov');
-      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('on', i === 0));
-      document.getElementById('tab-add').style.display = 'block';
-      document.getElementById('tab-del').style.display = 'none';
+      openAdminModal(); // [개선 3] 인증 성공 시 메시지 초기화 로직이 담긴 전용 함수 호출
     } else {
       document.getElementById('auth-err').style.display = 'block';
       adminInput = null;
@@ -218,6 +209,21 @@ async function checkAuth() {
     document.getElementById('auth-err').textContent = "서버 연결에 실패했습니다.";
     document.getElementById('auth-err').style.display = 'block';
   }
+}
+
+// [개선 3] 상품 관리 모달창을 열 때 이전의 성공/에러 메시지를 깨끗하게 지우는 함수
+function openAdminModal() {
+  document.getElementById('add-err').style.display = 'none';
+  document.getElementById('add-suc').style.display = 'none';
+  
+  updateCatList();
+  renderDelList();
+  showOv('adm-ov');
+  
+  // 첫 번째 탭(상품 등록)으로 초기화
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('on', i === 0));
+  document.getElementById('tab-add').style.display = 'block';
+  document.getElementById('tab-del').style.display = 'none';
 }
 
 function renderNav(){
@@ -372,10 +378,9 @@ function updateCatList(){
   document.getElementById('cat-list').innerHTML=[...new Set(products.map(p=>p.category))].map(c=>`<option value="${c}">`).join('');
 }
 
-// 이미지 미리보기 및 실제 파일 객체 확보하기
 function previewImg(input){
   if(!input.files||!input.files[0])return;
-  imgFile = input.files[0]; // 백엔드로 보낼 실제 File 객체 보관
+  imgFile = input.files[0];
   const r=new FileReader();
   r.onload=e=>{
     const p=document.getElementById('img-prev');
@@ -385,12 +390,15 @@ function previewImg(input){
   r.readAsDataURL(imgFile);
 }
 
-// 3. 백엔드 서버로 실제 상품 추가하기
+// [개선 1 & 3] 상품 등록 비동기 처리 개선
 async function addProduct(){
   const cat=document.getElementById('add-cat').value.trim();
   const name=document.getElementById('add-name').value.trim();
   const err=document.getElementById('add-err'),suc=document.getElementById('add-suc');
-  err.style.display='none';suc.style.display='none';
+  const btn = document.querySelector('#tab-add .btn-p'); // 등록하기 버튼 선택
+  
+  err.style.display='none';
+  suc.style.display='none';
   
   if(!imgFile||!cat||!name){
     err.textContent='사진, 카테고리, 상품명을 모두 입력해 주세요.';
@@ -398,9 +406,14 @@ async function addProduct(){
     return;
   }
 
-  // 백엔드의 Multer가 파싱할 수 있게 폼 데이터 객체 구성
+  // [개선 1] 등록 과정 UI 처리 (버튼 비활성화 및 텍스트 변경)
+  btn.disabled = true;
+  btn.textContent = '등록 중...';
+  btn.style.opacity = '0.6';
+  btn.style.cursor = 'not-allowed';
+
   const form = new FormData();
-  form.append('image', imgFile); // Base64 텍스트 문자열이 아닌 찐 파일 오브젝트 전송
+  form.append('image', imgFile);
   form.append('category', cat);
   form.append('name', name);
   form.append('adminToken', adminInput);
@@ -411,7 +424,6 @@ async function addProduct(){
     
     const newProduct = await response.json();
     
-    // 등록 성공 시 로컬 리스트 변수 갱신 후 다시 그리기
     products.unshift({
       id: newProduct.id,
       category: newProduct.category,
@@ -419,17 +431,27 @@ async function addProduct(){
       image: newProduct.image_url
     });
 
+    suc.textContent = '등록되었습니다.';
     suc.style.display='block';
+    
+    // 입력 폼 초기화
     document.getElementById('add-cat').value='';
     document.getElementById('add-name').value='';
     document.getElementById('img-file').value='';
     document.getElementById('img-prev').style.display='none';
     imgFile=null;
+    
     updateCatList();renderNav();renderGrid();
   } catch (error) {
     console.error(error);
     err.textContent = "상품 등록에 실패했습니다.";
     err.style.display = 'block';
+  } finally {
+    // [개선 1] 등록 작업이 끝나면 (성공이든 실패든) 버튼 원상복구
+    btn.disabled = false;
+    btn.textContent = '등록하기';
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
   }
 }
 
@@ -444,7 +466,6 @@ function renderDelList(){
     </div>`).join('');
 }
 
-// 4. 백엔드 서버 상품 삭제 기능 연동
 async function delProduct(id){
   if(!confirm("정말 이 상품을 삭제하시겠습니까?")) return;
   
@@ -461,14 +482,14 @@ async function delProduct(id){
       renderNav();
       renderGrid();
     } else {
-      alert("삭제 실패 권한이 없거나 오류가 발생했습니다.");
+      alert("삭제 실패: 권한이 없거나 오류가 발생했습니다.");
     }
   } catch(err) {
     console.error(err);
   }
 }
 
-// 페이지 로드 시 백엔드로부터 데이터 가져오기 실행 시작
+// 페이지 로드 시 시작
 loadProducts();
 
 let rT;
