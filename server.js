@@ -17,6 +17,7 @@ cloudinary.config({
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname));
 
 // DB 테이블 자동 생성
 pool.query(`
