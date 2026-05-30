@@ -142,9 +142,9 @@ nav::-webkit-scrollbar{display:none}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const ADMIN_CODE='1234';
-let products=JSON.parse(localStorage.getItem('sori_p')||'null');
-let currentCat='all', imgData=null;
+const API = 'https://studio-maewha.up.railway.app/';
+const products = await fetch(`${API}/api/products`).then(r => r.json());
+let currentCat='all', imgData=null, adminInput=null;
 
 if(!products){
   products=[
@@ -296,12 +296,13 @@ function openAuth(){
   setTimeout(()=>document.getElementById('auth-in').focus(),100);
 }
 function checkAuth(){
-  if(document.getElementById('auth-in').value===ADMIN_CODE){
+  adminInput=document.getElementById('auth-in').value.trim();
+  if(adminInput===ADMIN_CODE){
     closeOv('auth-ov');updateCatList();renderDelList();showOv('adm-ov');
     document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===0));
     document.getElementById('tab-add').style.display='block';
     document.getElementById('tab-del').style.display='none';
-  }else{document.getElementById('auth-err').style.display='block'}
+  }else{document.getElementById('auth-err').style.display='block';adminInput=null;}
 }
 function switchTab(tab,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
@@ -319,13 +320,21 @@ function previewImg(input){
   r.onload=e=>{imgData=e.target.result;const p=document.getElementById('img-prev');p.src=imgData;p.style.display='block'};
   r.readAsDataURL(input.files[0]);
 }
-function addProduct(){
+async function addProduct(){
   const cat=document.getElementById('add-cat').value.trim();
   const name=document.getElementById('add-name').value.trim();
   const err=document.getElementById('add-err'),suc=document.getElementById('add-suc');
   err.style.display='none';suc.style.display='none';
   if(!imgData||!cat||!name){err.textContent='사진, 카테고리, 상품명을 모두 입력해 주세요.';err.style.display='block';return}
-  products.push({id:Date.now(),category:cat,name,image:imgData});
+
+  const form = new FormData();
+  form.append('image', imgData);
+  form.append('category', cat);
+  form.append('name', name);
+  form.append('adminToken', adminInput);
+  await fetch(`${API}/api/products`, { method: 'POST', body: form });
+
+  products.push({id:Date.now(),category:cat,name:name,image:imgData});
   save();suc.style.display='block';
   document.getElementById('add-cat').value='';
   document.getElementById('add-name').value='';
@@ -344,8 +353,17 @@ function renderDelList(){
       <button class="btn-x" onclick="delProduct(${p.id})">✕</button>
     </div>`).join('');
 }
-function delProduct(id){
-  products=products.filter(p=>p.id!==id);save();renderDelList();renderNav();renderGrid();
+async function delProduct(id){
+  await fetch(`${API}/api/products/${id}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adminToken: adminInput })
+  });
+  products=products.filter(p=>p.id!==id);
+  save();
+  renderDelList();
+  renderNav();
+  renderGrid();
 }
 
 renderNav();
