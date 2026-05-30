@@ -143,29 +143,82 @@ nav::-webkit-scrollbar{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const API = 'https://studio-maewha.up.railway.app';
-let currentCat = 'all', imgData = null, adminInput = null;
+let currentCat = 'all', imgFile = null, adminInput = null; // imgData 대신 파일 객체를 저장할 변수 변경
 let products = [];
 
+// 1. 비동기로 서버에서 상품 목록을 가져온 후 화면을 그리는 함수
 async function loadProducts() {
   try {
     const response = await fetch(`${API}/api/products`);
-    products = await response.json();
+    const data = await response.json();
+    
+    // 백엔드 DB 컬럼명(image_url)을 프론트엔드 형식(image)에 맞게 매핑
+    products = data.map(p => ({
+      id: p.id,
+      category: p.category,
+      name: p.name,
+      image: p.image_url 
+    }));
+
     console.log("상품 로드 완료:", products);
+
+    // 샘플 데이터 방어 코드
+    if (!products || products.length === 0) {
+      products = [
+        {id: 1, category: '샘플', name: '샘플 상품', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
+      ];
+    }
+
+    // 데이터를 가져온 직후 화면 UI 생성 및 애니메이션 초기화
+    renderNav();
+    renderGrid();
+    initThree();
+    animThree();
+    setTimeout(syncCanvas, 200);
+
   } catch (error) {
     console.error("데이터를 가져오는데 실패했습니다:", error);
+    // 서버가 안 켜졌을 때를 대비한 임시 로컬 데이터
+    products = [
+      {id: 1, category: '샘플', name: '샘플 상품(로컬서버오류)', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
+    ];
+    renderNav();
+    renderGrid();
+    initThree();
+    animThree();
   }
 }
 
-loadProducts();
+// 2. 관리자 인증 요청 (ADMIN_PASSWORD 에러 해결)
+async function checkAuth() {
+  adminInput = document.getElementById('auth-in').value.trim();
+  
+  try {
+    const response = await fetch(`${API}/api/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: adminInput }) // ADMIN_PASSWORD 대신 입력한 값 전송
+    });
+    const data = await response.json();
 
-if(!products){
-  products=[
-    {id:1,category:'샘플',name:'샘플 상품',image:'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
-  ];
-  save();
+    if (data.ok) {
+      closeOv('auth-ov');
+      updateCatList();
+      renderDelList();
+      showOv('adm-ov');
+      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('on', i === 0));
+      document.getElementById('tab-add').style.display = 'block';
+      document.getElementById('tab-del').style.display = 'none';
+    } else {
+      document.getElementById('auth-err').style.display = 'block';
+      adminInput = null;
+    }
+  } catch (err) {
+    console.error("인증 에러:", err);
+    document.getElementById('auth-err').textContent = "서버 연결에 실패했습니다.";
+    document.getElementById('auth-err').style.display = 'block';
+  }
 }
-
-function save(){localStorage.setItem('sori_p',JSON.stringify(products))}
 
 function renderNav(){
   const nav=document.getElementById('nav');
@@ -307,15 +360,7 @@ function openAuth(){
   showOv('auth-ov');
   setTimeout(()=>document.getElementById('auth-in').focus(),100);
 }
-function checkAuth(){
-  adminInput=document.getElementById('auth-in').value.trim();
-  if(adminInput===ADMIN_PASSWORD){
-    closeOv('auth-ov');updateCatList();renderDelList();showOv('adm-ov');
-    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===0));
-    document.getElementById('tab-add').style.display='block';
-    document.getElementById('tab-del').style.display='none';
-  }else{document.getElementById('auth-err').style.display='block';adminInput=null;}
-}
+
 function switchTab(tab,el){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   el.classList.add('on');
@@ -326,35 +371,68 @@ function switchTab(tab,el){
 function updateCatList(){
   document.getElementById('cat-list').innerHTML=[...new Set(products.map(p=>p.category))].map(c=>`<option value="${c}">`).join('');
 }
+
+// 이미지 미리보기 및 실제 파일 객체 확보하기
 function previewImg(input){
   if(!input.files||!input.files[0])return;
+  imgFile = input.files[0]; // 백엔드로 보낼 실제 File 객체 보관
   const r=new FileReader();
-  r.onload=e=>{imgData=e.target.result;const p=document.getElementById('img-prev');p.src=imgData;p.style.display='block'};
-  r.readAsDataURL(input.files[0]);
+  r.onload=e=>{
+    const p=document.getElementById('img-prev');
+    p.src=e.target.result;
+    p.style.display='block';
+  };
+  r.readAsDataURL(imgFile);
 }
+
+// 3. 백엔드 서버로 실제 상품 추가하기
 async function addProduct(){
   const cat=document.getElementById('add-cat').value.trim();
   const name=document.getElementById('add-name').value.trim();
   const err=document.getElementById('add-err'),suc=document.getElementById('add-suc');
   err.style.display='none';suc.style.display='none';
-  if(!imgData||!cat||!name){err.textContent='사진, 카테고리, 상품명을 모두 입력해 주세요.';err.style.display='block';return}
+  
+  if(!imgFile||!cat||!name){
+    err.textContent='사진, 카테고리, 상품명을 모두 입력해 주세요.';
+    err.style.display='block';
+    return;
+  }
 
+  // 백엔드의 Multer가 파싱할 수 있게 폼 데이터 객체 구성
   const form = new FormData();
-  form.append('image', imgData);
+  form.append('image', imgFile); // Base64 텍스트 문자열이 아닌 찐 파일 오브젝트 전송
   form.append('category', cat);
   form.append('name', name);
   form.append('adminToken', adminInput);
-  await fetch(`${API}/api/products`, { method: 'POST', body: form });
 
-  products.push({id:Date.now(),category:cat,name:name,image:imgData});
-  save();suc.style.display='block';
-  document.getElementById('add-cat').value='';
-  document.getElementById('add-name').value='';
-  document.getElementById('img-file').value='';
-  document.getElementById('img-prev').style.display='none';
-  imgData=null;
-  updateCatList();renderNav();renderGrid();
+  try {
+    const response = await fetch(`${API}/api/products`, { method: 'POST', body: form });
+    if (!response.ok) throw new Error('서버 등록 실패');
+    
+    const newProduct = await response.json();
+    
+    // 등록 성공 시 로컬 리스트 변수 갱신 후 다시 그리기
+    products.unshift({
+      id: newProduct.id,
+      category: newProduct.category,
+      name: newProduct.name,
+      image: newProduct.image_url
+    });
+
+    suc.style.display='block';
+    document.getElementById('add-cat').value='';
+    document.getElementById('add-name').value='';
+    document.getElementById('img-file').value='';
+    document.getElementById('img-prev').style.display='none';
+    imgFile=null;
+    updateCatList();renderNav();renderGrid();
+  } catch (error) {
+    console.error(error);
+    err.textContent = "상품 등록에 실패했습니다.";
+    err.style.display = 'block';
+  }
 }
+
 function renderDelList(){
   const dl=document.getElementById('del-list');
   if(!products.length){dl.innerHTML='<p style="font-size:13px;color:var(--ink-light);padding:1rem 0">등록된 상품이 없습니다.</p>';return}
@@ -365,22 +443,34 @@ function renderDelList(){
       <button class="btn-x" onclick="delProduct(${p.id})">✕</button>
     </div>`).join('');
 }
+
+// 4. 백엔드 서버 상품 삭제 기능 연동
 async function delProduct(id){
-  await fetch(`${API}/api/products/${id}`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adminToken: adminInput })
-  });
-  products=products.filter(p=>p.id!==id);
-  save();
-  renderDelList();
-  renderNav();
-  renderGrid();
+  if(!confirm("정말 이 상품을 삭제하시겠습니까?")) return;
+  
+  try {
+    const response = await fetch(`${API}/api/products/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminToken: adminInput })
+    });
+    
+    if(response.ok) {
+      products=products.filter(p=>p.id!==id);
+      renderDelList();
+      renderNav();
+      renderGrid();
+    } else {
+      alert("삭제 실패 권한이 없거나 오류가 발생했습니다.");
+    }
+  } catch(err) {
+    console.error(err);
+  }
 }
 
-renderNav();
-renderGrid();
-window.addEventListener('load',()=>{initThree();animThree();setTimeout(syncCanvas,200)});
+// 페이지 로드 시 백엔드로부터 데이터 가져오기 실행 시작
+loadProducts();
+
 let rT;
 window.addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{syncCanvas();initReveal()},200)});
 </script>
