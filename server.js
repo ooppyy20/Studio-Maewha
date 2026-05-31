@@ -59,7 +59,7 @@ app.post('/api/products', upload.single('image'), async (req, res) => {
     // 1. 변환 없이 원본만 Cloudinary에 초고속 업로드
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
-        { resource_type: 'image' },
+        { resource_type: 'image', eager_async: true },
         (err, result) => err ? reject(err) : resolve(result)
       ).end(req.file.buffer);
     });
