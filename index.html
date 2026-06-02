@@ -37,7 +37,13 @@ nav::-webkit-scrollbar{display:none}
 @media(hover:hover){.card-wrap:hover .card-name{color:var(--ink);}}
 .card-wrap{opacity:0;transform:translateY(16px);transition:opacity 0.48s ease,transform 0.48s ease}
 .card-wrap.revealed{opacity:1;transform:translateY(0)}
-
+.badge-hot{
+  position:absolute;top:10px;left:10px;
+  background:var(--accent-light);color:#fff;
+  font-size:9px;font-weight:700;letter-spacing:0.18em;
+  padding:4px 8px;border-radius:1px;
+  pointer-events:none;z-index:1;
+}
 
 .overlay{display:none;position:fixed;inset:0;background:rgba(28,26,22,0.55);z-index:1000;align-items:flex-end;justify-content:center}
 @media(min-width:600px){.overlay{align-items:center}}
@@ -62,11 +68,25 @@ nav::-webkit-scrollbar{display:none}
 .msg{font-size:12px;margin-top:7px;letter-spacing:0.04em}
 .err{color:#c0392b}.suc{color:var(--accent)}
 .upload-box{border:0.5px dashed var(--accent-light);padding:18px;text-align:center;cursor:pointer;color:var(--ink-light);font-size:clamp(11px,2.5vw,12px);letter-spacing:0.06em}
+
+/* 관리자 - 주력 설정 버튼 */
+.btn-feature{
+  background:none;border:0.5px solid var(--warm);
+  color:var(--ink-light);cursor:pointer;
+  font-size:10px;letter-spacing:0.06em;
+  padding:4px 8px;flex-shrink:0;
+  transition:background 0.2s,color 0.2s;
+  border-radius:0;
+}
+.btn-feature.on{
+  background:var(--accent);border-color:var(--accent);
+  color:#fff;
+}
 </style>
 
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>매화 스튜디오, 구슬로 엮어낸 럭셔리</title>
+  <title>매화 스튜디오, 비즈로 엮어낸 럭셔리</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/koPubWorldBatang/koPubWorldBatang.css">
@@ -116,7 +136,7 @@ nav::-webkit-scrollbar{display:none}
     <p class="modal-title">상품 관리</p>
     <div class="tab-row">
       <button class="tab on" onclick="switchTab('add',this)">상품 등록</button>
-      <button class="tab" onclick="switchTab('del',this)">상품 삭제</button>
+      <button class="tab" onclick="switchTab('del',this)">상품 HOT 설정/삭제</button>
     </div>
     <div id="tab-add">
       <div class="field"><label>상품 사진</label>
@@ -159,14 +179,15 @@ async function loadProducts() {
       id: p.id,
       category: p.category,
       name: p.name,
-      image: p.image_url 
+      image: p.image_url,
+      isFeatured: p.is_featured || false
     }));
 
     console.log("상품 로드 완료:", products);
 
     if (!products || products.length === 0) {
       products = [
-        {id: 1, category: '샘플', name: '샘플 상품', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
+        {id: 1, category: '샘플', name: '샘플 상품', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75', isFeatured: false},
       ];
     }
 
@@ -176,7 +197,7 @@ async function loadProducts() {
   } catch (error) {
     console.error("데이터를 가져오는데 실패했습니다:", error);
     products = [
-      {id: 1, category: '샘플', name: '샘플 상품(로컬서버오류)', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75'},
+      {id: 1, category: '샘플', name: '샘플 상품(로컬서버오류)', image: 'https://images.unsplash.com/photo-1614484691701-709df3fec2ac?w=400&q=75', isFeatured: false},
     ];
     renderNav();
     renderGrid();
@@ -242,9 +263,20 @@ function selectCat(cat){
 function renderGrid(){
   const grid=document.getElementById('grid');
   const list=currentCat==='all'?products:products.filter(p=>p.category===currentCat);
-  grid.innerHTML=list.map(p=>`
+
+  // 주력 상품을 맨 앞으로 정렬 (전체 탭에서만, 카테고리 필터 시 일반 순서 유지)
+  let sorted=[...list];
+  if(currentCat==='all'){
+    const fi=sorted.findIndex(p=>p.isFeatured);
+    if(fi>0){const [fp]=sorted.splice(fi,1);sorted.unshift(fp);}
+  }
+
+  grid.innerHTML=sorted.map(p=>`
     <div class="card-wrap">
-      <div class="card-img"><img src="${p.image}" alt="${p.name}" loading="lazy"></div>
+      <div class="card-img">
+        ${p.isFeatured?'<span class="badge-hot">HOT</span>':''}
+        <img src="${p.image}" alt="${p.name}" loading="lazy">
+      </div>
       <div class="card-name">${p.name}</div>
     </div>`).join('');
   initReveal();
@@ -369,7 +401,8 @@ async function addProduct(){
       id: newProduct.id,
       category: newProduct.category,
       name: newProduct.name,
-      image: newProduct.image_url
+      image: newProduct.image_url,
+      isFeatured: false
     });
 
     suc.textContent = '등록되었습니다.';
@@ -403,8 +436,33 @@ function renderDelList(){
     <div class="di">
       <img src="${p.image}" alt="${p.name}">
       <div class="di-info"><div class="di-cat">${p.category}</div><div class="di-name">${p.name}</div></div>
+      <button class="btn-feature${p.isFeatured?' on':''}" onclick="toggleFeature(${p.id},${p.isFeatured})">${p.isFeatured?'HOT ✓':'HOT'}</button>
       <button class="btn-x" onclick="delProduct(${p.id})">✕</button>
     </div>`).join('');
+}
+
+async function toggleFeature(id, currentlyFeatured){
+  const endpoint = currentlyFeatured ? 'unfeature' : 'feature';
+  try {
+    const response = await fetch(`${API}/api/products/${id}/${endpoint}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminToken: adminInput })
+    });
+    if(!response.ok) throw new Error('설정 실패');
+
+    // 로컬 상태 업데이트
+    if(currentlyFeatured){
+      products = products.map(p => p.id===id ? {...p, isFeatured:false} : p);
+    } else {
+      products = products.map(p => ({...p, isFeatured: p.id===id}));
+    }
+    renderDelList();
+    renderGrid();
+  } catch(err){
+    console.error(err);
+    alert('주력 설정 중 오류가 발생했습니다.');
+  }
 }
 
 async function delProduct(id){
