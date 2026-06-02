@@ -19,16 +19,22 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// DB 테이블 자동 생성
+// DB 테이블 자동 생성 + is_featured 컬럼 마이그레이션
 pool.query(`
   CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     category VARCHAR(100) NOT NULL,
     name VARCHAR(200) NOT NULL,
     image_url VARCHAR(500) NOT NULL,
+    is_featured BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT NOW()
   )
-`);
+`).then(() => {
+  // 기존 테이블에 컬럼이 없을 경우 안전하게 추가 (이미 있으면 무시)
+  return pool.query(`
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE
+  `);
+}).catch(err => console.error('DB 초기화 오류:', err));
 
 // 상품 전체 조회
 app.get('/api/products', async (req, res) => {
@@ -81,6 +87,38 @@ app.post('/api/products', upload.single('image'), async (req, res) => {
   } catch (error) {
     console.error("업로드 오류:", error);
     res.status(500).json({ error: '이미지 업로드 중 오류가 발생했습니다.' });
+  }
+});
+
+// 주력 상품 설정 (기존 featured 해제 후 새 상품 설정)
+app.patch('/api/products/:id/feature', async (req, res) => {
+  const { adminToken } = req.body;
+  const ok = (adminToken === process.env.ADMIN_PASSWORD);
+  if (!ok) return res.status(401).json({ error: '인증 실패' });
+
+  const id = req.params.id;
+  try {
+    await pool.query('UPDATE products SET is_featured = FALSE');
+    await pool.query('UPDATE products SET is_featured = TRUE WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('주력 설정 오류:', err);
+    res.status(500).json({ error: '설정 중 오류가 발생했습니다.' });
+  }
+});
+
+// 주력 상품 해제
+app.patch('/api/products/:id/unfeature', async (req, res) => {
+  const { adminToken } = req.body;
+  const ok = (adminToken === process.env.ADMIN_PASSWORD);
+  if (!ok) return res.status(401).json({ error: '인증 실패' });
+
+  try {
+    await pool.query('UPDATE products SET is_featured = FALSE WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('주력 해제 오류:', err);
+    res.status(500).json({ error: '해제 중 오류가 발생했습니다.' });
   }
 });
 
