@@ -7,7 +7,15 @@ const { Pool } = require('pg');
 
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const upload = multer({ storage: multer.memoryStorage() });
+const ALLOWED_MIME = ['image/jpeg','image/png','image/webp','image/gif','video/mp4'];
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_MIME.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('지원하지 않는 파일 형식입니다. (jpg/png/webp/gif/mp4만 가능)'));
+  },
+  limits: { fileSize: 30 * 1024 * 1024 } // 30MB
+});
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -55,26 +63,35 @@ app.post('/api/auth', async (req, res) => {
   res.json({ ok });
 });
 
-// 상품 등록 (이미지 업로드 속도 개선 버전)
-app.post('/api/products', upload.single('image'), async (req, res) => {
+// 상품 등록 (이미지/gif/mp4 업로드)
+app.post('/api/products', (req, res, next) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
   const { category, name, adminToken } = req.body;
   const ok = (adminToken === process.env.ADMIN_PASSWORD);
   if (!ok) return res.status(401).json({ error: '인증 실패' });
 
+  const isVideo = req.file.mimetype === 'video/mp4';
+  const isGif   = req.file.mimetype === 'image/gif';
+  const needsTransform = !isVideo && !isGif; // gif/mp4는 색보정 변환 스킵
+
   try {
-    // 1. 변환 없이 원본만 Cloudinary에 초고속 업로드
+    // 1. Cloudinary 업로드 (gif/mp4는 video resource_type 사용)
+    const resourceType = isVideo ? 'video' : 'image';
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
-        { resource_type: 'image', eager_async: true },
+        { resource_type: resourceType, eager_async: true },
         (err, result) => err ? reject(err) : resolve(result)
       ).end(req.file.buffer);
     });
 
-    // 2. URL 문자열 조작으로 웜톤 필터 및 자동 압축 적용 (서버 연산 시간 0초)
-    const transformedUrl = result.secure_url.replace(
-      '/upload/',
-      '/upload/q_auto,f_auto,e_brightness:5,cs_srgb/'
-    );
+    // 2. jpg/png/webp만 웜톤 필터 및 자동 압축 적용 (gif/mp4는 원본 URL 사용)
+    const transformedUrl = needsTransform
+      ? result.secure_url.replace('/upload/', '/upload/q_auto,f_auto,e_brightness:5,cs_srgb/')
+      : result.secure_url;
 
     // 3. 변환된 URL을 DB에 저장
     const { rows } = await pool.query(
