@@ -76,7 +76,8 @@ app.post('/api/products', (req, res, next) => {
 
   const isVideo = req.file.mimetype === 'video/mp4';
   const isGif   = req.file.mimetype === 'image/gif';
-  const needsTransform = !isVideo && !isGif; // gif/mp4는 색보정 변환 스킵
+  // const needsTransform = !isVideo && !isGif; // gif/mp4는 색보정 변환 스킵
+  const needsTransform = false; // 사용자 요청사항 반영
 
   try {
     // 1. Cloudinary 업로드 (gif/mp4는 video resource_type 사용)
