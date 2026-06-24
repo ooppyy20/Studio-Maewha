@@ -389,12 +389,17 @@ function openLightbox(src, name){
   }
   lb.classList.add('show');
   document.body.style.overflow='hidden';
+  document.documentElement.style.overflow='hidden';
+  document.addEventListener('touchmove',blockScroll,{passive:false});
 }
+function blockScroll(e){e.preventDefault()}
 function closeLightbox(){
   const lb=document.getElementById('lightbox');
   lb.classList.remove('show');
   document.getElementById('lightbox-vid').src='';
   document.body.style.overflow='';
+  document.documentElement.style.overflow='';
+  document.removeEventListener('touchmove',blockScroll);
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox()});
 
